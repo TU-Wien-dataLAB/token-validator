@@ -16,7 +16,7 @@ def validate_token():
         else:
             return jsonify({'message': 'Token is invalid'}), 401
     else:
-        return jsonify({'message': 'No Bearer token provided'}), 400
+        return jsonify({'message': 'No Bearer token provided'}), 401
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
