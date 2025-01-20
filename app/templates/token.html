@@ -4,13 +4,74 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Token Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .header {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+        }
+        .admin-link {
+            text-decoration: none;
+            font-size: 14px;
+            color: #007bff;
+            font-weight: bold;
+        }
+        .admin-link:hover {
+            text-decoration: underline;
+        }
+        .token-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background-color: #f3f3f3;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            word-break: break-all;
+        }
+        .token-text {
+            font-family: monospace;
+            font-size: 18px;
+        }
+        .icon-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Current Token</h1>
-    <p><strong>{{ token }}</strong></p>
 
-    <form action="{{ url_for('regenerate_token') }}" method="post">
-        <button type="submit">Regenerate Token</button>
-    </form>
+    {% if user.is_admin %}
+    <div class="header">
+        <a href="/admin" class="admin-link">Admin Page</a>
+    </div>
+    {% endif %}
+
+    <h1>API Token</h1>
+
+    <div class="token-container">
+        <span class="token-text" id="token">{{ token }}</span>
+        <button class="icon-button" onclick="copyToken()" title="Copy Token">📋</button>
+        <form action="{{ url_for('regenerate_token') }}" method="post" style="display: inline;">
+            <button type="submit" class="icon-button" title="Regenerate Token">🔄</button>
+        </form>
+    </div>
+
+    <script>
+        function copyToken() {
+            var tokenText = document.getElementById("token").innerText;
+            navigator.clipboard.writeText(tokenText);
+            alert("Token copied to clipboard!");
+        }
+    </script>
+
 </body>
 </html>

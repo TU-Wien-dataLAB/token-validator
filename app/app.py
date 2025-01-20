@@ -1,22 +1,19 @@
 from secrets import token_hex
-from typing import Self
 
 from authlib.oauth2.rfc6749 import OAuth2Token
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from authlib.integrations.flask_client import OAuth
-from flask_admin.contrib.sqla.form import InlineOneToOneModelConverter
-from flask_admin.model import InlineFormAdmin
-from flask_sqlalchemy import SQLAlchemy
 from flask_admin import Admin, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
 
 from config import Config
+from models import db, User, Token, Entity, TokenEntity
 
 app = Flask(__name__)
 app.config.from_object(Config)
 app.secret_key = Config.SECRET_KEY  # Required for session management
 
-db = SQLAlchemy(app)
+db.init_app(app)
 
 oauth = OAuth(app)
 oauth.register(
@@ -30,16 +27,14 @@ oauth.register(
 )
 
 
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    email = db.Column(db.String(255), unique=True, nullable=False)
-    is_admin = db.Column(db.Boolean, default=False, nullable=False)
-    token = db.Column(db.String(255), unique=True, nullable=False)
+def random_token(nbytes=32) -> str:
+    """Generate a random token."""
+    return token_hex(nbytes=nbytes)
 
-    @classmethod
-    def from_session(cls) -> Self | None:
-        uid = session.get('user_id')
-        return None if uid is None else db.session.get(cls, uid)
+
+def update_user_token(user: User):
+    user.token.value = random_token()
+    db.session.commit()
 
 
 class TokenValidatorAdminView(ModelView):
@@ -56,19 +51,41 @@ class TokenValidatorAdminView(ModelView):
         return redirect(url_for('/', next=request.url))
 
 
-admin = Admin(app, name='admin')
-admin.add_view(TokenValidatorAdminView(User, db.session))
+class UserAdminView(TokenValidatorAdminView):
+    column_list = ['id', 'email', 'is_admin', 'token.value']
+    column_searchable_list = ['email', 'token.value']
+    column_filters = ['is_admin']
+    can_edit = False
+    page_size = 50
 
 
-def random_token(nbytes=32) -> str:
-    """Generate a random token."""
-    return token_hex(nbytes=nbytes)
+class EntityAdminView(TokenValidatorAdminView):
+    column_list = ['id', 'name', 'token.value']
+    column_searchable_list = ['name', 'token.value']
+    form_columns = ['name']
+    page_size = 50
+    # TODO: this should work but it does not
+    #  possible solution: https://stackoverflow.com/questions/58403366/flask-admin-one-to-one-relationship-and-edit-form
+    # inline_models = [(Token, dict(form_columns=('value',)))]
 
 
-def update_user_token(user: User):
-    token = random_token()
-    user.token = token
-    db.session.commit()
+class TokenAdminView(TokenValidatorAdminView):
+    column_list = ['id', 'token_entity.id', 'token_entity.type', 'value']
+    column_searchable_list = ['value']
+    form_columns = ['value']
+    form_args = {"value": {"default": random_token}}
+
+
+class TokenEntityAdminView(TokenValidatorAdminView):
+    column_list = ['id', 'type', 'token_id']
+    form_columns = ['id', 'type', 'token_id']
+
+
+admin = Admin(app, name='Admin', template_mode='bootstrap4')  # TODO: add custom index view based on AdminIndexView
+admin.add_view(UserAdminView(User, db.session))
+admin.add_view(EntityAdminView(Entity, db.session))
+admin.add_view(TokenAdminView(Token, db.session))
+admin.add_view(TokenEntityAdminView(TokenEntity, db.session))
 
 
 @app.route('/login')
@@ -81,6 +98,7 @@ def login():
 def authorize():
     token: OAuth2Token = oauth.oidc.authorize_access_token()
     user = User.query.filter_by(email=token["userinfo"]["email"]).first()
+    # TODO: add block list to db -> remove user from db if in block list and return 403
     if not user:
         user = User(email=token["userinfo"]["email"], is_admin=False)
         update_user_token(user)
@@ -105,7 +123,7 @@ def validate_token():
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
         token_from_header = auth_header[7:]
-        token_entry = User.query.filter_by(token=token_from_header).first()
+        token_entry = Token.query.filter_by(token=token_from_header).first()
         if token_entry:
             return jsonify({'message': 'Token is valid'}), 200
         else:
@@ -121,7 +139,7 @@ def token_page():
     user: User | None = User.from_session()
     if user is None:
         return redirect(url_for('login'))
-    return render_template('token.html', token=user.token)
+    return render_template('token.html', token=user.token.value, user=user)
 
 
 @app.route('/regenerate-token', methods=['POST'])
