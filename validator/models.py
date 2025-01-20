@@ -1,9 +1,8 @@
 from typing import Self
 
-from flask_sqlalchemy import SQLAlchemy
 from flask import session
 
-db = SQLAlchemy()
+from validator.extensions import db
 
 
 class TokenEntity(db.Model):
