@@ -14,8 +14,9 @@ app.config.from_object(Config)
 app.secret_key = Config.SECRET_KEY  # Required for session management
 
 db.init_app(app)
-
+admin = Admin(app, name='Admin', template_mode='bootstrap4')  # TODO: add custom index view based on AdminIndexView
 oauth = OAuth(app)
+
 oauth.register(
     name='oidc',
     client_id=Config.OIDC_CLIENT_ID,
@@ -37,17 +38,19 @@ def update_user_token(user: User):
     db.session.commit()
 
 
+# Admin Views
+
 class TokenValidatorAdminView(ModelView):
     column_display_pk = True
     column_hide_backrefs = False
     can_edit = True
+    page_size = 50
 
     def is_accessible(self):
         user = User.from_session()
         return False if user is None else user.is_admin
 
     def inaccessible_callback(self, name, **kwargs):
-        # redirect to login page if user doesn't have access
         return redirect(url_for('/', next=request.url))
 
 
@@ -56,14 +59,12 @@ class UserAdminView(TokenValidatorAdminView):
     column_searchable_list = ['email', 'token.value']
     column_filters = ['is_admin']
     can_edit = False
-    page_size = 50
 
 
 class EntityAdminView(TokenValidatorAdminView):
     column_list = ['id', 'name', 'token.value']
     column_searchable_list = ['name', 'token.value']
     form_columns = ['name']
-    page_size = 50
     # TODO: this should work but it does not
     #  possible solution: https://stackoverflow.com/questions/58403366/flask-admin-one-to-one-relationship-and-edit-form
     # inline_models = [(Token, dict(form_columns=('value',)))]
@@ -81,12 +82,13 @@ class TokenEntityAdminView(TokenValidatorAdminView):
     form_columns = ['id', 'type', 'token_id']
 
 
-admin = Admin(app, name='Admin', template_mode='bootstrap4')  # TODO: add custom index view based on AdminIndexView
 admin.add_view(UserAdminView(User, db.session))
 admin.add_view(EntityAdminView(Entity, db.session))
 admin.add_view(TokenAdminView(Token, db.session))
 admin.add_view(TokenEntityAdminView(TokenEntity, db.session))
 
+
+# OAuth
 
 @app.route('/login')
 def login():
@@ -118,6 +120,8 @@ def logout():
     return redirect('/')
 
 
+# Routes
+
 @app.route('/validate', methods=['GET', 'POST'])
 def validate_token():
     auth_header = request.headers.get('Authorization')
@@ -144,7 +148,7 @@ def token_page():
 
 @app.route('/regenerate-token', methods=['POST'])
 def regenerate_token():
-    """Generate a new token and update the 'database'."""
+    """Generate a new token and update the database."""
     user: User | None = User.from_session()
     if user is None:
         return redirect(url_for('login'))
