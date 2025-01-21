@@ -1,3 +1,4 @@
+import logging
 from secrets import token_hex
 
 from flask import request, jsonify, render_template, redirect, url_for, current_app
@@ -5,6 +6,8 @@ from flask_admin.contrib.sqla import ModelView
 
 from validator.models import User, Token, Entity, TokenEntity
 from validator.extensions import admin, db
+
+log = logging.getLogger(__name__)
 
 
 def random_token(nbytes=32) -> str:
@@ -80,6 +83,7 @@ def validate_token():
         if token_entry:
             return jsonify({'message': 'Token is valid'}), 200
         else:
+            current_app.logger.info(f"Validate called with invalid token: {token_from_header}")
             return jsonify({'message': 'Token is invalid'}), 401
     else:
         return jsonify({'message': 'No Bearer token provided'}), 401

@@ -10,6 +10,7 @@ from config import Config
 @current_app.route('/login')
 def login():
     redirect_uri = url_for('authorize', _external=True)
+    current_app.logger.info(f"Redirecting to {redirect_uri}")
     return oauth.oidc.authorize_redirect(redirect_uri)
 
 
