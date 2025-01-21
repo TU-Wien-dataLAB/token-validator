@@ -53,7 +53,7 @@ class EntityAdminView(TokenValidatorAdminView):
 
 class TokenAdminView(TokenValidatorAdminView):
     column_list = ['id', 'token_entity.id', 'token_entity.type', 'value']
-    column_searchable_list = ['value']
+    column_searchable_list = ['value', 'token_entity.id', 'token_entity.type']
     form_columns = ['value']
     form_args = {"value": {"default": random_token}}
 
@@ -76,7 +76,7 @@ def validate_token():
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
         token_from_header = auth_header[7:]
-        token_entry = Token.query.filter_by(token=token_from_header).first()
+        token_entry = Token.query.filter_by(value=token_from_header).first()
         if token_entry:
             return jsonify({'message': 'Token is valid'}), 200
         else:
