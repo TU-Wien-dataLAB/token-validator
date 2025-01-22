@@ -3,6 +3,7 @@ from secrets import token_hex
 
 from flask import request, jsonify, render_template, redirect, url_for, current_app
 from flask_admin.contrib.sqla import ModelView
+from flask_admin.menu import MenuLink
 
 from validator.models import User, Token, Entity, TokenEntity
 from validator.extensions import admin, db
@@ -70,7 +71,7 @@ admin.add_view(UserAdminView(User, db.session))
 admin.add_view(EntityAdminView(Entity, db.session))
 admin.add_view(TokenAdminView(Token, db.session))
 admin.add_view(TokenEntityAdminView(TokenEntity, db.session))
-
+admin.add_link(MenuLink(name='UI', category='', url='/'))
 
 # Routes
 
