@@ -97,7 +97,7 @@ def token_page():
     user: User | None = User.from_session()
     if user is None:
         return redirect(url_for('login'))
-    return render_template('token.html', token=user.token.value, user=user)
+    return render_template('token.html', token=user.token.value, user=user, links=current_app.config.get('EXTERNAL_LINKS'))
 
 
 @current_app.route('/regenerate-token', methods=['POST'])
