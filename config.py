@@ -4,6 +4,8 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 
 class Config:
+    PREFERRED_URL_SCHEME = os.environ.get('PREFERRED_URL_SCHEME', 'http')
+    APPLICATION_ROOT = os.environ.get('APPLICATION_ROOT', '/')
     SECRET_KEY = os.environ.get('SECRET_KEY')
     ADMIN_GROUP = os.environ.get('ADMIN_GROUP')
 
